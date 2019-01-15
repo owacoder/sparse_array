@@ -378,7 +378,7 @@ public:
 
         // Check if desired index is in bounds
         if (is_not_in_vector(upper_bound, idx))
-            return mDefaultValue;
+            return mGenerator(idx);
 
         // Return element
         return upper_bound->second[idx - upper_bound->first];
