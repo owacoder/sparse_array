@@ -266,6 +266,7 @@ public:
         bool element_does_not_exist() const {return atEnd() || (mIsRangeIter && mParent->is_not_in_vector(mMapIter, mKey));}
         bool element_exists() const {return !element_does_not_exist();}
         const Key &index() const {return mKey;}
+        reference value() const {return **this;}
     };
 
     typedef T value_type;
@@ -433,6 +434,8 @@ public:
         }
     }
 
+    bool exists(Key key) const {return iterator_at(key).element_exists();}
+
     // Complexity: best case is O(1) (when decayed to a vector and the specified element is at the end)
     //             average case is O(logn) (when every element is in a bucket by itself)
     //             worst case is O(n) (when decayed to a vector and the specified element is at the beginning)
@@ -471,7 +474,7 @@ public:
                 // Erase beginning of new vector (getting rid of the specified key)
                 vec.erase(vec.begin());
                 // Insert new vector as a new map entry
-                mMap.insert(++upper_bound, std::make_pair(key + 1, vec));
+                mMap.insert(++upper_bound, std::make_pair(key + 1, std::move(vec)));
             }
             // Erase the existing (now invalid) map entry
             mMap.erase(it);
@@ -486,7 +489,7 @@ public:
             // Erase end of existing vector
             upper_bound->second.erase(upper_bound->second.begin() + pivot, upper_bound->second.end());
             // Insert new vector as a new map entry
-            mMap.insert(++upper_bound, std::make_pair(key + 1, vec));
+            mMap.insert(++upper_bound, std::make_pair(key + 1, std::move(vec)));
         }
     }
 
