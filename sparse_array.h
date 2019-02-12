@@ -23,6 +23,8 @@
  */
 
 #include <typeinfo>
+#include <map>
+#include <vector>
 
 template<typename Key, typename T, typename DiffType, typename Generator> class sparse_array;
 
@@ -34,7 +36,7 @@ namespace impl {
         Generator generator;
 
     public:
-        GeneratorHelper(const sparse_array<Key, T, DiffType, Generator> *, const Generator *g) : val{}, generator(*g) {}
+        GeneratorHelper(const sparse_array<T, Key, DiffType, Generator> *, const Generator *g) : val{}, generator(*g) {}
 
         const T &operator()(Key idx) {val = generator(idx); return val;}
     };
@@ -42,10 +44,10 @@ namespace impl {
     template<typename Key, typename T, typename DiffType>
     class GeneratorHelper<Key, T, DiffType, void>
     {
-        const sparse_array<Key, T, DiffType, void> *parent;
+        const sparse_array<T, Key, DiffType, void> *parent;
 
     public:
-        GeneratorHelper(const sparse_array<Key, T, DiffType, void> *parent, const void *) : parent(parent) {}
+        GeneratorHelper(const sparse_array<T, Key, DiffType, void> *parent, const void *) : parent(parent) {}
 
         const T &operator()(Key);
     };
@@ -105,7 +107,7 @@ namespace impl {
  * All elements are strictly ordered, allowing O(n) ascending traversal of array keys.
  *
  */
-template<typename Key, typename T, typename DiffType = uintmax_t, typename Generator = void>
+template<typename T, typename Key = size_t, typename DiffType = uintmax_t, typename Generator = void>
 class sparse_array {
     friend class const_iterator;
 
@@ -263,9 +265,10 @@ public:
             return !(*this == other);
         }
 
-        bool element_does_not_exist() const {return atEnd() || (mIsRangeIter && mParent->is_not_in_vector(mMapIter, mKey));}
-        bool element_exists() const {return !element_does_not_exist();}
+        bool value_does_not_exist() const {return atEnd() || (mIsRangeIter && mParent->is_not_in_vector(mMapIter, mKey));}
+        bool value_exists() const {return !value_does_not_exist();}
         const Key &index() const {return mKey;}
+        const Key &key() const {return mKey;}
         reference value() const {return **this;}
     };
 
@@ -290,7 +293,7 @@ public:
         mMap.insert(std::make_pair(0, args));
     }
 
-    sparse_array(const T &defaultValue, bool iteratorsEncompassAllValuesInSpan = true)
+    sparse_array(const T &defaultValue = T(), bool iteratorsEncompassAllValuesInSpan = true)
         : mElements(0)
         , mGenerator(this, typeid(void) != typeid(Generator)? (throw impl::exception("sparse_array with non-default generator initialized without generator functor specified"), nullptr): nullptr)
         , mUseRangeIters(iteratorsEncompassAllValuesInSpan)
@@ -318,7 +321,7 @@ public:
 
     // Returns iterators that iterator all values in the span, including non-existent entries that take on the default value
     // The key value is accessible using <iterator>.index()
-    // Use <iterator>.element_exists() or <iterator>.element_does_not_exist() to determine whether the entry actually exists in the array or not
+    // Use <iterator>.value_exists() or <iterator>.value_does_not_exist() to determine whether the entry actually exists in the array or not
     const_iterator contiguous_begin() const {return const_iterator(this, mMap.begin(), true);}
     const_iterator contiguous_cbegin() const {return const_iterator(this, mMap.begin(), true);}
     const_iterator contiguous_end() const {return const_iterator(this, mMap.end(), true);}
@@ -326,7 +329,7 @@ public:
 
     // Returns iterator that iterator only the values entered in the array, excluding non-existent entries that take on the default value
     // The key value is accessible using <iterator>.index()
-    // <iterator>.element_exists() should always return true for valid iterators obtained from these functions
+    // <iterator>.value_exists() should always return true for valid iterators obtained from these functions
     const_iterator skip_begin() const {return const_iterator(this, mMap.begin(), false);}
     const_iterator skip_cbegin() const {return const_iterator(this, mMap.begin(), false);}
     const_iterator skip_end() const {return const_iterator(this, mMap.end(), false);}
@@ -434,7 +437,7 @@ public:
         }
     }
 
-    bool exists(Key key) const {return iterator_at(key).element_exists();}
+    bool exists(Key key) const {return iterator_at(key).value_exists();}
 
     // Complexity: best case is O(1) (when decayed to a vector and the specified element is at the end)
     //             average case is O(logn) (when every element is in a bucket by itself)
@@ -613,11 +616,11 @@ bool operator!=(const sparse_array<Key, T> &lhs, const sparse_array<Key, T> &rhs
 }
 
 template<typename Key, typename T, typename DiffType = uintmax_t, typename Generator = void>
-sparse_array<Key, T, DiffType, Generator> make_sparse_array(const T &default_value, bool iteratorsEncompassAllValuesInSpan = true) {
-    return sparse_array<Key, T, DiffType, Generator>(default_value, iteratorsEncompassAllValuesInSpan);
+sparse_array<T, Key, DiffType, Generator> make_sparse_array(const T &default_value, bool iteratorsEncompassAllValuesInSpan = true) {
+    return sparse_array<T, Key, DiffType, Generator>(default_value, iteratorsEncompassAllValuesInSpan);
 }
 
 template<typename Key, typename T, typename DiffType = uintmax_t, typename Generator = void>
-sparse_array<Key, T, DiffType, Generator> make_sparse_array(const Generator &generator, bool iteratorsEncompassAllValuesInSpan = true) {
-    return sparse_array<Key, T, DiffType, Generator>(generator, iteratorsEncompassAllValuesInSpan);
+sparse_array<T, Key, DiffType, Generator> make_sparse_array(const Generator &generator, bool iteratorsEncompassAllValuesInSpan = true) {
+    return sparse_array<T, Key, DiffType, Generator>(generator, iteratorsEncompassAllValuesInSpan);
 }
